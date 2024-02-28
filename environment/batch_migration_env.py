@@ -37,7 +37,7 @@ class MECServer(object):
         self.task_load_range = 0
         self.frequence = frequence # 10 GHz
 
-    def get_current_workload(self):
+    def get_current_workload(self):      # 每调用一次都会随机出新的workload
         num_arriving_tasks = np.random.poisson(self.poisson_rate)
 
         total_required_frequency = 0.0
@@ -65,7 +65,10 @@ class BatchMigrationEnv(gym.Env):
         self.is_batch = True
         if self.is_full_action:
             self._action_spec = spaces.Discrete(env_parameters.num_base_station)
+            # spaces.Discrete(N)：使用 OpenAI Gym 库定义一个离散空间（Discrete space），
+            # 其中包含了从 0 到 N-1 的整数，总共 N 个可能的值。在这个环境中，每个整数代表一个可选的动作。
             self._action_dim = env_parameters.num_base_station
+            # 动作空间(_action_spec)：根据 is_full_action 的值，环境的动作空间可以是离散空间，其大小要么是基站的数量（代表所有可能的基站迁移目标），要么是固定的数字6。
         else:
             self._action_spec = spaces.Discrete(6)
             self._action_dim = 6
@@ -83,14 +86,30 @@ class BatchMigrationEnv(gym.Env):
         #self._state_dim = 5 + 2 * env_parameters.num_base_station
         if self.is_full_observation:
             self._state_dim = 2 * env_parameters.num_base_station + 2
+            # 如果是完全观测：状态向量包括了每个基站的两项信息（可能是例如每个基站的工作负载和可用资源等），加上两个额外的全局信息
         else:
             self._state_dim = 4
+            # 如果不是完全观测：状态维度被简化为 4。这表示无论基站的数量如何，状态向量都只包含四个元素，这四个元素需要以更简化的形式来捕捉环境的当前状态。这可能是一种折衷，用于减少状态空间的复杂性，从而简化学习任务。
 
         self.server_poisson_rate = env_parameters.server_poisson_rate
+
         # The state include (distance, num_of_hops, workload_distribution, service_index, data_process)
         # this is a gym environment with Box as the observation type
+        # Box 类型：在OpenAI Gym库中，Box 是用来表示连续观测空间的一个数据结构。具体来说，它定义了一个n维的盒子，这个盒子在每个维度上都有上下界限，用来限制该维度上的值的范围。这些界限可以是实数（浮点数），使得Box非常适合于需要连续值表示的环境。
+        # 观测（Observation）类型：“这是一个gym环境，观测类型为Box”的意思是，在该环境中，智能体接收到的每个观测（或状态）都是一个连续的n维向量，每个维度的值都有明确的上下界。这些观测可能代表了环境中的物理量，比如速度、位置、角度等，它们通常是实数值。
+        # observation_space = gym.spaces.Box(low=np.array([-1.0, 0.0, -5.0]), high=np.array([1.0, 100.0, 5.0]), dtype=np.float32)
+        # 在这个例子中，Box定义了一个3维的连续空间，其中每个维度都有自己的上下界。这种方式为模拟复杂的、连续变化的环境提供了一种非常灵活且强大的方法。
+
+        # 
+
+
+        # 这两行代码是在定义一个环境的观测（或状态）空间的边界。在强化学习中，观测空间（或状态空间）描述了智能体可以观察到的所有可能状态。每个状态由一组特征（或维度）表示，这组特征的每个元素都有其可能的取值范围。
         low_state = np.array( [float("-inf")]*self._state_dim)
+        # 这行代码创建了一个NumPy数组，数组的大小由状态维度（self._state_dim）决定，数组中的每个元素都被初始化为负无穷大（-inf）。这表示观测空间中每个维度的最低可能值是无限小。
         high_state = np.array( [float("inf")] * self._state_dim)
+        # 这行代码创建了另一个NumPy数组，大小同样由状态维度决定，但是数组中的每个元素都被初始化为正无穷大（inf）。这表示观测空间中每个维度的最高可能值是无限大。
+        # 将这两个数组用作观测空间的边界，意味着状态空间中的每个维度都可以取任意实数值，没有限制。在实际应用中，这种定义方式通常用于创建一个开放的状态空间，其中智能体可以观察到的状态值没有预先定义的上下限。然而，在实际操作中，智能体遇到的实际状态值通常会有实际的上下限。
+        
         self._server_frequency = env_parameters.server_frequency
 
 
