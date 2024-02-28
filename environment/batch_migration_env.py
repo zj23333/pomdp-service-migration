@@ -114,9 +114,15 @@ class BatchMigrationEnv(gym.Env):
 
 
         self._observation_spec = spaces.Box(low=np.float32(low_state), high=np.float32(high_state),  dtype=np.float32)
-
+        # low 和 high：low 和 high 参数分别定义了观测空间中每个维度的最小值和最大值。在这个例子中，low_state 和 high_state 分别被设置为所有维度的最小值（负无穷大）和最大值（正无穷大），表示观测空间在每个维度上的值没有限制。通过将这些数组转换为 np.float32 类型，确保了观测空间的数据类型是32位浮点数。
+      
         self._state = np.zeros(self._state_dim)
+        # 创建了一个初始状态向量 self._state，其中包含的值全为0，向量的大小由 self._state_dim 决定。
         self._episode_ended = False
+        # self._episode_ended：这个属性用于跟踪当前episode是否已经结束。初始化为 False 意味着一个新的episode正在开始或者正在进行中。
+        # 如果满足结束条件，self._episode_ended 将被设置为 True，表示当前episode已结束。
+        # 在强化学习的实践中，当 self._episode_ended 为 True 时，通常会调用环境的 reset() 方法来重置环境状态到初始状态，同时 self._episode_ended 会被再次设置为 False，标志着一个新的episode的开始
+      
         self._num_base_station = env_parameters.num_base_station
         # initialize the environment
         self.server_list = []
