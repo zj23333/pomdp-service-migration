@@ -259,8 +259,7 @@ class BatchMigrationEnv(gym.Env):
         return self._observation_spec
 
     def get_migration_cost(self):
-        image_size = np.random.uniform(self.migration_size_low,
-                                 self.migration_size_high)    # 指定的范围内随机选择一个值来模拟迁移数据的大小MB
+        image_size = np.random.uniform(self.migration_size_low, self.migration_size_high)    # 指定的范围内随机选择一个值来模拟迁移数据的大小MB
         migration_cost = image_size * 8.0 / self._optical_fiber_trans_rate
         # 迁移成本计算通过将镜像大小（MB）转换为位（通过乘以8得到兆比特，Mb），然后除以光纤传输速率来完成
         return migration_cost     # 返回完成数据迁移所需的时间（单位是秒）
@@ -268,20 +267,18 @@ class BatchMigrationEnv(gym.Env):
     def get_migration_coefficient(self):
         return np.random.uniform(self.migration_coefficient_low, self.migration_coefficient_high)  ## ？？？？？？？？
 
-    def _generate_client_work_loads(self):
-        num_arriving_tasks = max(1, np.random.poisson(self.client_poisson_rate))
+    def _generate_client_work_loads(self):  # client workload是一次性生成的，而不是随着时间逐渐生成的
+        num_arriving_tasks = max(1, np.random.poisson(self.client_poisson_rate))    # 使用泊松分布生成到达任务的数量
 
         total_required_frequency = 0.0
         task_data_volume = 0.0
         for i in range(num_arriving_tasks):
-            task_data = np.random.uniform(self.client_task_data_lower_bound,
-                                          self.client_task_data_higher_bound)
+            task_data = np.random.uniform(self.client_task_data_lower_bound, self.client_task_data_higher_bound)  # 使用均匀分布随机生成每个任务的数据量
 
-            task_comp_to_volume_ratio = np.random.uniform(self.ratio_lower_bound,
-                                                          self.ratio_higher_bound)
+            task_comp_to_volume_ratio = np.random.uniform(self.ratio_lower_bound, self.ratio_higher_bound)  # 使用均匀分布随机生成每个任务的计算量与数据量的比率
 
-            total_required_frequency += task_data * task_comp_to_volume_ratio
-            task_data_volume += task_data
+            total_required_frequency += task_data * task_comp_to_volume_ratio  # 累加每个任务的计算量来计算总所需的处理频率
+            task_data_volume += task_data  # 累加每个任务的数据量来计算总数据量
 
         total_required_frequency = total_required_frequency / (1024.0 * 1024.0 * 1024.0) # Hz --> GHz
         task_data_volume = task_data_volume / (1024.0 * 1024.0 ) # bit -- > Mb
