@@ -154,12 +154,12 @@ class BatchMigrationEnv(gym.Env):
 
         self._total_time_slot_length = env_parameters.trace_length
 
-        self.servers_position = self._initialize_servers_position()
+        self.servers_position = self._initialize_servers_position()    # 8*8 棋盘分布
         # read the users traces
         # record the total trace number
-        self.users_traces = self._read_traces_from_the_csv(env_parameters.traces_file_path, env_parameters.trace_start_index, self._num_traces)
+        self.users_traces = self._read_traces_from_the_csv(env_parameters.traces_file_path, env_parameters.trace_start_index, self._num_traces)        # 读取一部分用户的轨迹，稀疏化
         self._current_time_slot = [0] * self._num_traces
-        self.batch_size = self._num_traces
+        self.batch_size = self._num_traces        # 每个批次应该包含的轨迹（或者例子）数量与轨迹数相同
 
     def _initialize_servers_position(self):
         delta_x = self.map_width / self.num_horizon_servers
@@ -200,13 +200,16 @@ class BatchMigrationEnv(gym.Env):
         users_traces_list = []
         for i in range(start_index, (start_index+num_of_traces)):
             user_name = user_names[i]
-            one_user_trace = users_traces[user_name][:: self.trace_interval]
+            one_user_trace = users_traces[user_name][:: self.trace_interval]         # 应用一个间隔来稀疏化（或降采样）这些数据
+            # 这是Python中的切片操作，用于从列表中按一定间隔提取元素。
+            # :: 表示从列表的开始到结束。
+            # self.trace_interval 是一个整数，表示间隔大小。
             one_user_trace = one_user_trace[0:self.trace_length]
             users_traces_list.append(one_user_trace)
 
         return users_traces_list
     # This function aims at find the area that user belongs to
-    def _get_user_area_by_position(self, user_position):
+    def _get_user_area_by_position(self, user_position):    # 给一个用户分配最近的server，也就是local server
         delta_x = self.map_width / float(self.num_horizon_servers)
         delta_y = self.map_height / float(self.num_vertical_servers)
 
@@ -217,12 +220,14 @@ class BatchMigrationEnv(gym.Env):
         return index
 
     def _get_wireless_transmission_rate(self, user_position):
-        servers_index = self._get_user_area_by_position(user_position)
+        servers_index = self._get_user_area_by_position(user_position)     # 确定用户的local server
         base_state_position = self.servers_position[servers_index]
 
-        x_distance = abs(user_position.x - base_state_position.x)
+        x_distance = abs(user_position.x - base_state_position.x)      # 计算用户与服务器之间的x和y方向上的距离
         y_distance = abs(user_position.y - base_state_position.y)
 
+        # 计算覆盖区域单位：
+        # 地图被水平和垂直服务器数量等分，每个方向上的间隔（delta_x, delta_y）被进一步细分为更小的覆盖单位（area_cover_unit_x, area_cover_unit_y），这些单位对应于不同的无线传输速率区域。num_areas 表示有多少个不同的传输速率区域。
         num_areas = len(self.transmission_rates)
 
         delta_x = self.map_width / float(self.num_horizon_servers)
@@ -230,12 +235,12 @@ class BatchMigrationEnv(gym.Env):
 
         area_cover_unit_x = delta_x / 2.0 / num_areas
         area_cover_unit_y = delta_y / 2.0 / num_areas
-
+        # 确定用户所在的传输速率区域，获取对应的传输速率
         area_number = max(int(x_distance / area_cover_unit_x), int(y_distance / area_cover_unit_y))
-
+        # 这个方法模拟了现实世界中无线信号强度随距离变化而衰减的情况，即用户距离基站越远，可获得的无线传输速率越低
         return self.transmission_rates[area_number]  # bps
 
-    def _get_number_of_hops(self, base_one_index, base_two_index):
+    def _get_number_of_hops(self, base_one_index, base_two_index):   # 跳数是曼哈顿距离，毕竟棋盘格地图
         base_one_index_y = int(base_one_index / self.num_horizon_servers)
         base_one_index_x = int(base_one_index % self.num_horizon_servers)
 
@@ -255,13 +260,13 @@ class BatchMigrationEnv(gym.Env):
 
     def get_migration_cost(self):
         image_size = np.random.uniform(self.migration_size_low,
-                                 self.migration_size_high)
+                                 self.migration_size_high)    # 指定的范围内随机选择一个值来模拟迁移数据的大小MB
         migration_cost = image_size * 8.0 / self._optical_fiber_trans_rate
-
-        return migration_cost
+        # 迁移成本计算通过将镜像大小（MB）转换为位（通过乘以8得到兆比特，Mb），然后除以光纤传输速率来完成
+        return migration_cost     # 返回完成数据迁移所需的时间（单位是秒）
 
     def get_migration_coefficient(self):
-        return np.random.uniform(self.migration_coefficient_low, self.migration_coefficient_high)
+        return np.random.uniform(self.migration_coefficient_low, self.migration_coefficient_high)  ## ？？？？？？？？
 
     def _generate_client_work_loads(self):
         num_arriving_tasks = max(1, np.random.poisson(self.client_poisson_rate))
