@@ -285,17 +285,17 @@ class BatchMigrationEnv(gym.Env):
 
         return total_required_frequency, task_data_volume
 
-    def _make_state_according_to_action(self, trace_id, action):
+    def _make_state_according_to_action(self, trace_id, action):      # 移动一个task
         # this action should be one action rather than a batch of actions.
         # generate_client_task
-        client_required_frequency, task_data_volume = self._generate_client_work_loads()
+        client_required_frequency, task_data_volume = self._generate_client_work_loads()    # 生成新的workload
 
         user_position = self.users_traces[trace_id][self._current_time_slot[trace_id]]
-        user_position_index = self._get_user_area_by_position(user_position)
+        user_position_index = self._get_user_area_by_position(user_position)      # user目前的local server
 
-        if action == None:
+        if action == None:      # 如果没动作，跳到local server去
             service_index = user_position_index
-        else:
+        else:    # ？？？
             # the service index is the second dimension of true state
             service_index = self._state[trace_id][1]
 
@@ -304,11 +304,10 @@ class BatchMigrationEnv(gym.Env):
         server_workloads = []
         servers_computation_latencies = []
         for server in self.server_list:
-            server_workload = server.get_current_workload()
-            server_workloads.append(server_workload)
-            computation_latency = float(server_workload + client_required_frequency) / server.frequence
-            servers_computation_latencies.append(computation_latency)
-            # servers_workloads.append(server_workload)
+            server_workload = server.get_current_workload()    # 每一个server随机生成workload
+            server_workloads.append(server_workload)    # 放进server_workloads数组
+            computation_latency = float(server_workload + client_required_frequency) / server.frequence      # 计算时间=(server+client)/frequency
+            servers_computation_latencies.append(computation_latency)    # 时间放进server时间数组
 
 
         self._client_required_frequency[trace_id] = client_required_frequency
@@ -328,13 +327,15 @@ class BatchMigrationEnv(gym.Env):
         self._migration_coefficient[trace_id] = current_migration_coefficient
         self._migration_cost[trace_id] = current_migration_cost
 
-        for server in self.server_list:
+        for server in self.server_list:    # 每一个server都要算的
+            # 这个server和local server的距离
             num_of_hops = self._get_number_of_hops(user_position_index, server.index)
 
             # Calculate the migration number of hops
+            # 这个server和serving server的距离
             migration_num_of_hops = self._get_number_of_hops(service_index, server.index)
 
-            servers_migration_num_of_hops.append(migration_num_of_hops)
+            servers_migration_num_of_hops.append(migration_num_of_hops)    # 存进各自的数组
             servers_num_of_hops.append(num_of_hops)
 
             wired_communication_cost = (task_data_volume / self._optical_fiber_trans_rate) * min(num_of_hops, 1) \
@@ -344,7 +345,7 @@ class BatchMigrationEnv(gym.Env):
             communication_cost = float(task_data_volume) / float(trans_rate) + wired_communication_cost + \
                                  (migration_num_of_hops * current_migration_coefficient + current_migration_cost)
 
-            communication_costs.append(communication_cost)
+            communication_costs.append(communication_cost)      # 算出通讯开销，一并存进数组
 
         # what we should return is the observation instead of the true state
         #state = [user_position_index, service_index, trans_rate, client_required_frequency,
@@ -352,9 +353,9 @@ class BatchMigrationEnv(gym.Env):
 
         # when action is None, we do the reset()
         if action != None:
-            if self.is_full_action:
+            if self.is_full_action:    # full action一定是true
                 service_index = action
-            else:
+            else:    # 这里不会运行到
                 service_index = self._get_service_index_by_action(action, service_index, user_position_index)
 
         # state = [self._user_position_index, self._service_index ] + servers_computation_latencies + communication_costs
