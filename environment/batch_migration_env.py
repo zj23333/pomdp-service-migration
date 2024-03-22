@@ -293,9 +293,9 @@ class BatchMigrationEnv(gym.Env):
         user_position = self.users_traces[trace_id][self._current_time_slot[trace_id]]
         user_position_index = self._get_user_area_by_position(user_position)      # user目前的local server
 
-        if action == None:      # 如果没动作，跳到local server去
+        if action == None:      # 如果action是None，意味着进行reset，具体操作是跳到local server去
             service_index = user_position_index
-        else:    # ？？？
+        else:    # ？？？_state是个啥？？？
             # the service index is the second dimension of true state
             service_index = self._state[trace_id][1]
 
@@ -352,7 +352,7 @@ class BatchMigrationEnv(gym.Env):
         #         task_data_volume] + servers_computation_latencies + servers_num_of_hops
 
         # when action is None, we do the reset()
-        if action != None:
+        if action != None:    # action是None的时候，做reset
             if self.is_full_action:    # full action一定是true
                 service_index = action
             else:    # 这里不会运行到
@@ -361,25 +361,31 @@ class BatchMigrationEnv(gym.Env):
         # state = [self._user_position_index, self._service_index ] + servers_computation_latencies + communication_costs
         # observation = [self._user_position_index] + servers_computation_latencies + communication_costs
         # there are several state for the service and users
+        # full_observation为真的时候用state，否则用observation
         state = [user_position_index, service_index] + servers_computation_latencies + communication_costs + \
                 [trans_rate, client_required_frequency, task_data_volume] + server_workloads
         num_of_hops = self._get_number_of_hops(user_position_index, service_index)
         observation = [user_position_index, trans_rate, task_data_volume, client_required_frequency]
+        # # # 这里要仔细看一看！
 
         return state, observation
 
     def extract_system_infomation_from_state(self, states):
-        positions_vector = states[:, 0:2]
-        client_side_vector = states[:, 2+self._num_base_station*2: 2+self._num_base_station*2+3]
-        server_workloads = states[:, 5+self._num_base_station*2:]
+        positions_vector = states[:, 0:2]      # 从二维数组states中提取所有行的前两列数据
+        client_side_vector = states[:, 2+self._num_base_station*2: 2+self._num_base_station*2+3]    # 从二维数组states中提取所有行的130-132列数据
+        server_workloads = states[:, 5+self._num_base_station*2:]      # 从二维数组states中提取所有行的133-末尾列数据
 
         system_info_vector = np.concatenate([positions_vector, client_side_vector, server_workloads], axis=-1)
+          # 沿着数组的最后一个维度，即列维度，连接 positions_vector、client_side_vector 和 server_workloads 这三个数组，生成一个新的数组
+        # 举例来说，假设有两个二维数组 A 和 B，它们的形状分别为 (m, n) 和 (m, p)，其中 m 表示行数，n 和 p 分别表示 A 和 B 的列数。若沿着最后一个维度进行连接，即列维度，那么 A 和 B 将会在列方向上进行连接，生成一个新的数组，新数组的形状为 (m, n + p)。
+        # 在 NumPy 中，axis=-1 表示沿着最后一个维度进行操作，即列维度。
 
         return system_info_vector
 
     def reset_trace(self, trace_id):
+        # 时间归零
         self._current_time_slot[trace_id] = 0
-
+        # # action是None的时候，做reset
         state, observation = self._make_state_according_to_action(trace_id, action=None)
 
         return state, observation
